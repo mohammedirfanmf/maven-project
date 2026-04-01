@@ -27,7 +27,7 @@
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/mohammedirfanmf/https://github.com/mohammedirfanmf/maven-project.git</url>
+            <url>https://maven.pkg.github.com/mohammedirfanmf/https://github.com/mohammedirfanmf/maven-project</url>
         </repository>
     </distributionManagement>
 
