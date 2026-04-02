@@ -6,6 +6,15 @@ pipeline {
         jdk 'JDK17'
     }
 
+    environment {
+        APP_NAME = "jenkins-demo"
+        VERSION = "1.0.0"
+        EC2_USER = "ubuntu"
+        EC2_HOST = "13.234.240.3"
+        DEPLOY_DIR = "/opt/app"
+        JAR_NAME = "${APP_NAME}-${VERSION}.jar"
+    }
+
     stages {
 
         stage('Checkout') {
@@ -17,7 +26,7 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                sh 'mvn clean package -DskipTests'
             }
         }
 
@@ -25,18 +34,24 @@ pipeline {
             steps {
                 sshagent(['ec2-ssh-key']) {
                     sh '''
-                        echo "Copying artifact to EC2..."
-                        scp -o StrictHostKeyChecking=no \
-                            target/demo-1.0.0.jar \
-                            ubuntu@<13.234.240.3>:/opt/app/
+                        echo "Creating app directory..."
+                        ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST \
+                        "mkdir -p $DEPLOY_DIR"
 
-                        echo "Starting application on EC2..."
-                        ssh -T -o StrictHostKeyChecking=no ubuntu@<13.234.240.3> '
-                            pkill -f demo-1.0.0.jar || true
-                            setsid nohup java -jar /opt/app/demo-1.0.0.jar \
-                                > /opt/app/app.log 2>&1 < /dev/null &
-                            exit 0
-                        '
+                        echo "Copying JAR to EC2..."
+                        scp -o StrictHostKeyChecking=no \
+                        target/$JAR_NAME \
+                        $EC2_USER@$EC2_HOST:$DEPLOY_DIR/
+
+                        echo "Stopping old app (if running)..."
+                        ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST \
+                        "pkill -f $JAR_NAME || true"
+
+                        echo "Starting new app..."
+                        ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "
+                            nohup java -jar $DEPLOY_DIR/$JAR_NAME \
+                            > $DEPLOY_DIR/app.log 2>&1 &
+                        "
                     '''
                 }
             }
@@ -45,10 +60,10 @@ pipeline {
 
     post {
         success {
-            echo "Deployment completed successfully."
+            echo "✅ Deployment completed successfully!"
         }
         failure {
-            echo "Deployment failed. Check Jenkins or EC2 logs."
+            echo "❌ Deployment failed. Check logs."
         }
     }
 }
