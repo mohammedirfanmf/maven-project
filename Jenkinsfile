@@ -1,3 +1,10 @@
+stage('Debug Java') {
+    steps {
+        sh 'echo JAVA_HOME=$JAVA_HOME'
+        sh 'java -version'
+        sh 'mvn -version'
+    }
+}
 pipeline {
     agent any
 
